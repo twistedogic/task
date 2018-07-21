@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/twistedogic/task/cheat"
 	"github.com/twistedogic/task/docker"
-	"github.com/twistedogic/task/note"
 )
 
 var rootCmd = &cobra.Command{
@@ -18,7 +17,6 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(docker.RunCmd, docker.DevCmd)
 	rootCmd.AddCommand(cheat.RunCmd)
-	rootCmd.AddCommand(note.IssueCmd, note.IdeaCmd, note.TILCmd, note.FactCmd, note.BlogCmd)
 }
 
 func execute() {
