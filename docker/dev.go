@@ -21,7 +21,8 @@ var langChoice = map[string]bool{
 	"node":   true,
 	"reason": true,
 	"cpp":    true,
-	"rust":    true,
+	"rust":   true,
+	"python": true,
 }
 
 func concat(s ...[]string) []string {
