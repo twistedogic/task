@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -31,6 +32,25 @@ func IsDockerRunning() bool {
 func StartDocker() error {
 	cmd := exec.Command("open", "--background", "-a", "Docker")
 	return cmd.Run()
+}
+
+func ListImages() (map[string]bool, error) {
+	out := make(map[string]bool)
+	root := "docker"
+	cmd := exec.Command(root, "images")
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		return out, err
+	}
+	lines := strings.Split(string(b), "\n")
+	for i, line := range lines {
+		if i == 0 || len(line) == 0 {
+			continue
+		}
+		image := strings.Fields(line)[0]
+		out[image] = true
+	}
+	return out, nil
 }
 
 var RunCmd = &cobra.Command{

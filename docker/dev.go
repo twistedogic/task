@@ -17,14 +17,6 @@ const (
 	INVALID_LANG = "invalid language choice"
 )
 
-var langChoice = map[string]bool{
-	"node":   true,
-	"reason": true,
-	"cpp":    true,
-	"rust":   true,
-	"python": true,
-}
-
 func concat(s ...[]string) []string {
 	out := []string{}
 	for _, v := range s {
@@ -34,11 +26,16 @@ func concat(s ...[]string) []string {
 }
 
 func runDevEnv(lang string) error {
-	if _, ok := langChoice[lang]; !ok {
-		return fmt.Errorf("%s: %s", INVALID_LANG, lang)
-	}
 	if !IsDockerRunning() {
 		return fmt.Errorf("%s", DOCKER_NOT_RUNNING)
+	}
+	box := fmt.Sprintf("%sbox", lang)
+	images, err := ListImages()
+	if err != nil {
+		return err
+	}
+	if _, ok := images[box]; !ok {
+		return fmt.Errorf("%s: %s", INVALID_LANG, lang)
 	}
 	home, err := fileutil.Home()
 	if err != nil {
