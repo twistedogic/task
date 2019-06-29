@@ -5,8 +5,9 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/twistedogic/task/cheat"
-	"github.com/twistedogic/task/docker"
+	"github.com/twistedogic/task/pkg/cheat"
+	"github.com/twistedogic/task/pkg/docker"
+	"github.com/twistedogic/task/pkg/okr"
 )
 
 var rootCmd = &cobra.Command{
@@ -17,6 +18,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(docker.RunCmd, docker.DevCmd)
 	rootCmd.AddCommand(cheat.RunCmd)
+	rootCmd.AddCommand(okr.RunCmd)
 }
 
 func execute() {

@@ -5,11 +5,12 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/user"
 	"path"
 
 	"github.com/spf13/cobra"
 
-	"github.com/twistedogic/task/fileutil"
+	"github.com/twistedogic/task/pkg/fileutil"
 )
 
 const (
@@ -26,6 +27,10 @@ func concat(s ...[]string) []string {
 }
 
 func runDevEnv(lang string) error {
+	u, err := user.Current()
+	if err != nil {
+		return err
+	}
 	if !IsDockerRunning() {
 		return fmt.Errorf("%s", DOCKER_NOT_RUNNING)
 	}
@@ -46,10 +51,11 @@ func runDevEnv(lang string) error {
 		return err
 	}
 	run := []string{"run", "-it", "--rm"}
-	volume := []string{"-v", fmt.Sprintf("%s:/root/workspace", workspace)}
+	workspaceVolume := []string{"-v", fmt.Sprintf("%s:/root/workspace", workspace)}
+	sshVolume := []string{"-v", fmt.Sprintf("%s/.ssh:/root/.ssh:ro", u.HomeDir)}
 	port := []string{"-p", "3000:3000", "-p", "8000:8000"}
 	container := []string{fmt.Sprintf("%sbox", lang), "tmux"}
-	args := concat(run, volume, port, container)
+	args := concat(run, workspaceVolume, sshVolume, port, container)
 	cmd := exec.Command("docker", args...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin

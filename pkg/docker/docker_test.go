@@ -3,6 +3,7 @@ package docker
 import "testing"
 
 func TestRunTask(t *testing.T) {
+	t.Skip()
 	cases := []struct {
 		input  []string
 		expect string
