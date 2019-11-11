@@ -3,20 +3,42 @@ package docker
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"os/user"
 	"path"
 
 	"github.com/spf13/cobra"
-
 	"github.com/twistedogic/task/pkg/fileutil"
 )
 
 const (
+	BASE_PORT    = 3000
 	MODE         = 0755
 	INVALID_LANG = "invalid language choice"
 )
+
+func isPortAvailable(p int) bool {
+	port := fmt.Sprintf(":%d", p)
+	lis, err := net.Listen("tcp", port)
+	if lis != nil {
+		lis.Close()
+	}
+	return err == nil
+}
+
+func AssignPort() int {
+	var i int
+	for {
+		port := BASE_PORT + i
+		if isPortAvailable(port) {
+			return port
+		}
+		i += 1
+	}
+	return -1
+}
 
 func concat(s ...[]string) []string {
 	out := []string{}
@@ -27,6 +49,7 @@ func concat(s ...[]string) []string {
 }
 
 func runDevEnv(lang string) error {
+	port := AssignPort()
 	u, err := user.Current()
 	if err != nil {
 		return err
@@ -53,9 +76,9 @@ func runDevEnv(lang string) error {
 	run := []string{"run", "-it", "--rm"}
 	workspaceVolume := []string{"-v", fmt.Sprintf("%s:/root/workspace", workspace)}
 	sshVolume := []string{"-v", fmt.Sprintf("%s/.ssh:/root/.ssh:ro", u.HomeDir)}
-	port := []string{"-p", "3000:3000", "-p", "8000:8000"}
+	ports := []string{"-p", fmt.Sprintf("%d:%d", port, port)}
 	container := []string{fmt.Sprintf("%sbox", lang), "tmux"}
-	args := concat(run, workspaceVolume, sshVolume, port, container)
+	args := concat(run, workspaceVolume, sshVolume, ports, container)
 	cmd := exec.Command("docker", args...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
