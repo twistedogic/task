@@ -76,9 +76,10 @@ func runDevEnv(lang string) error {
 	run := []string{"run", "-it", "--rm"}
 	workspaceVolume := []string{"-v", fmt.Sprintf("%s:/root/workspace", workspace)}
 	sshVolume := []string{"-v", fmt.Sprintf("%s/.ssh:/root/.ssh:ro", u.HomeDir)}
+	configVolume := []string{"-v", fmt.Sprintf("%s/.config:/root/.config", u.HomeDir)}
 	ports := []string{"-p", fmt.Sprintf("%d:%d", port, port)}
 	container := []string{fmt.Sprintf("%sbox", lang), "tmux"}
-	args := concat(run, workspaceVolume, sshVolume, ports, container)
+	args := concat(run, workspaceVolume, sshVolume, configVolume, ports, container)
 	cmd := exec.Command("docker", args...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
