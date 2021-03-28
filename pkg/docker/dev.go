@@ -2,14 +2,12 @@ package docker
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
 	"path"
 
-	"github.com/spf13/cobra"
 	"github.com/twistedogic/task/pkg/fileutil"
 )
 
@@ -48,7 +46,7 @@ func concat(s ...[]string) []string {
 	return out
 }
 
-func runDevEnv(lang string) error {
+func RunDevEnv(lang string) error {
 	port := AssignPort()
 	u, err := user.Current()
 	if err != nil {
@@ -85,18 +83,4 @@ func runDevEnv(lang string) error {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	return cmd.Run()
-}
-
-var DevCmd = &cobra.Command{
-	Use:   "dev",
-	Short: "run container for development",
-	Run: func(cmd *cobra.Command, args []string) {
-		if len(args) == 0 {
-			log.Fatal("not language choice entered")
-		}
-		lang := args[0]
-		if err := runDevEnv(lang); err != nil {
-			log.Fatal(err)
-		}
-	},
 }

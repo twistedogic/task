@@ -2,18 +2,15 @@ package docker
 
 import (
 	"fmt"
-	"log"
 	"os/exec"
 	"strings"
-
-	"github.com/spf13/cobra"
 )
 
 const (
 	DOCKER_NOT_RUNNING = "docker is not running"
 )
 
-func runTask(args ...string) ([]byte, error) {
+func RunTask(args ...string) ([]byte, error) {
 	if !IsDockerRunning() {
 		return []byte{}, fmt.Errorf("%s", DOCKER_NOT_RUNNING)
 	}
@@ -51,17 +48,4 @@ func ListImages() (map[string]bool, error) {
 		out[image] = true
 	}
 	return out, nil
-}
-
-var RunCmd = &cobra.Command{
-	Use:   "run",
-	Short: "run container for task",
-	Run: func(cmd *cobra.Command, args []string) {
-		out, err := runTask(args...)
-		if err != nil {
-			log.Fatal(err)
-		} else {
-			fmt.Println(string(out))
-		}
-	},
 }

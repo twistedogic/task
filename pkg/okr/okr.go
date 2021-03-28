@@ -5,7 +5,6 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
 	"github.com/twistedogic/task/pkg/fileutil"
 	"github.com/twistedogic/task/pkg/store/database"
 )
@@ -29,7 +28,7 @@ func Setup(name string) (*Store, error) {
 	return New(db)
 }
 
-func List(cmd *cobra.Command, args []string) {
+func List() {
 	store, err := Setup(dbName)
 	if err != nil {
 		log.Fatal(err)
@@ -39,7 +38,7 @@ func List(cmd *cobra.Command, args []string) {
 	}
 }
 
-func Add(cmd *cobra.Command, args []string) {
+func Add() {
 	db, err := Setup(dbName)
 	if err != nil {
 		log.Fatal(err)
@@ -49,7 +48,7 @@ func Add(cmd *cobra.Command, args []string) {
 	}
 }
 
-func Edit(cmd *cobra.Command, args []string) {
+func Edit() {
 	db, err := Setup(dbName)
 	if err != nil {
 		log.Fatal(err)
@@ -59,7 +58,7 @@ func Edit(cmd *cobra.Command, args []string) {
 	}
 }
 
-func Update(cmd *cobra.Command, args []string) {
+func Update() {
 	db, err := Setup(dbName)
 	if err != nil {
 		log.Fatal(err)
@@ -67,32 +66,4 @@ func Update(cmd *cobra.Command, args []string) {
 	if err := db.Update(); err != nil {
 		log.Fatal(err)
 	}
-}
-
-var RunCmd = &cobra.Command{
-	Use:   "okr",
-	Short: "Objective Key Result",
-	Run:   List,
-}
-
-var AddCmd = &cobra.Command{
-	Use:   "add",
-	Short: "Add Objective Key Result",
-	Run:   Add,
-}
-
-var EditCmd = &cobra.Command{
-	Use:   "edit",
-	Short: "Edit Objective Key Result",
-	Run:   Edit,
-}
-
-var UpdateCmd = &cobra.Command{
-	Use:   "update",
-	Short: "Update KRs",
-	Run:   Update,
-}
-
-func init() {
-	RunCmd.AddCommand(AddCmd, EditCmd, UpdateCmd)
 }

@@ -11,7 +11,7 @@ func TestRunTask(t *testing.T) {
 		{[]string{"busybox", "echo", "hi"}, "hi\n"},
 	}
 	for _, test := range cases {
-		out, err := runTask(test.input...)
+		out, err := RunTask(test.input...)
 		if err != nil {
 			t.Error(err)
 		}
