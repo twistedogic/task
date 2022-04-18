@@ -4,20 +4,21 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
-const (
-	DOCKER_NOT_RUNNING = "docker is not running"
+var (
+	DOCKER_NOT_RUNNING = errors.New("docker is not running")
 )
 
 func RunTask(args ...string) ([]byte, error) {
 	if !IsDockerRunning() {
-		return []byte{}, fmt.Errorf("%s", DOCKER_NOT_RUNNING)
+		return nil, DOCKER_NOT_RUNNING
 	}
 	root := "docker"
 	arg := append([]string{"run", "--rm"}, args...)
-	cmd := exec.Command(root, arg...)
-	return cmd.CombinedOutput()
+	return exec.Command(root, arg...).CombinedOutput()
 }
 
 func IsDockerRunning() bool {
@@ -27,25 +28,22 @@ func IsDockerRunning() bool {
 }
 
 func StartDocker() error {
-	cmd := exec.Command("open", "--background", "-a", "Docker")
-	return cmd.Run()
+	return exec.Command("open", "--background", "-a", "Docker").Run()
 }
 
-func ListImages() (map[string]bool, error) {
-	out := make(map[string]bool)
+func isValidLangImage(lang string) error {
 	root := "docker"
-	cmd := exec.Command(root, "images")
-	b, err := cmd.CombinedOutput()
+	b, err := exec.Command(root, "images").CombinedOutput()
 	if err != nil {
-		return out, err
+		return err
 	}
-	lines := strings.Split(string(b), "\n")
-	for i, line := range lines {
+	for i, line := range strings.Split(string(b), "\n") {
 		if i == 0 || len(line) == 0 {
 			continue
 		}
-		image := strings.Fields(line)[0]
-		out[image] = true
+		if image := strings.Fields(line)[0]; strings.HasPrefix(image, lang) {
+			return nil
+		}
 	}
-	return out, nil
+	return fmt.Errorf("%s: %s", INVALID_LANG, lang)
 }

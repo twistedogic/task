@@ -55,13 +55,8 @@ func RunDevEnv(lang string) error {
 	if !IsDockerRunning() {
 		return fmt.Errorf("%s", DOCKER_NOT_RUNNING)
 	}
-	box := fmt.Sprintf("%sbox", lang)
-	images, err := ListImages()
-	if err != nil {
+	if err := isValidLangImage(lang); err != nil {
 		return err
-	}
-	if _, ok := images[box]; !ok {
-		return fmt.Errorf("%s: %s", INVALID_LANG, lang)
 	}
 	home, err := fileutil.Home()
 	if err != nil {
