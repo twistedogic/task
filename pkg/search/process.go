@@ -49,11 +49,13 @@ func New(ctx context.Context, srcs ...Searcher) *Process {
 	resultList.AdditionalShortHelpKeys = additionKeys
 	resultList.AdditionalFullHelpKeys = additionKeys
 	resultList.StatusMessageLifetime = 5 * time.Second
+	textInput := textinput.New()
+	textInput.Placeholder = "r:github.com/prometheus f:ast.go Expr"
 	return &Process{
 		ctx:       ctx,
 		sources:   srcs,
 		current:   make(Results, 0),
-		textInput: textinput.New(),
+		textInput: textInput,
 		list:      resultList,
 		errCh:     make(chan error, len(srcs)),
 	}
