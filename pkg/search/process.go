@@ -27,16 +27,19 @@ const (
 var (
 	docStyle  = lipgloss.NewStyle().Margin(1, 2)
 	searchKey = key.NewBinding(
-		key.WithKeys("s"),
-		key.WithHelp("s", "search"),
+		key.WithKeys("w"),
+		key.WithHelp("w", "search"),
 	)
-	additionKeys = func() []key.Binding { return []key.Binding{searchKey} }
+	newSearchKey = key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "new search"),
+	)
+	additionKeys = func() []key.Binding { return []key.Binding{searchKey, newSearchKey} }
 )
 
 type Process struct {
 	ctx       context.Context
 	sources   []Searcher
-	current   Results
 	mode      mode
 	list      list.Model
 	textInput textinput.Model
@@ -54,7 +57,6 @@ func New(ctx context.Context, srcs ...Searcher) *Process {
 	return &Process{
 		ctx:       ctx,
 		sources:   srcs,
-		current:   make(Results, 0),
 		textInput: textInput,
 		list:      resultList,
 		errCh:     make(chan error, len(srcs)),
@@ -64,7 +66,7 @@ func New(ctx context.Context, srcs ...Searcher) *Process {
 func (p *Process) startVim(r Result) error {
 	dir, err := ioutil.TempDir("", "search")
 	if err != nil {
-		return nil
+		return err
 	}
 	filename := filepath.Base(r.File)
 	path := filepath.Join(dir, filename)
@@ -101,6 +103,16 @@ func (p *Process) inputUpdate(msg tea.Msg) tea.Cmd {
 	return cmd
 }
 
+func (p *Process) currentItem() Result {
+	r, ok := p.list.SelectedItem().(Result)
+	if !ok {
+		return Result{}
+	}
+	return r
+}
+
+func (p *Process) setTitle(s string) { p.list.Title = s }
+
 func (p *Process) listUpdate(msg tea.Msg) tea.Cmd {
 	select {
 	case err := <-p.errCh:
@@ -109,20 +121,26 @@ func (p *Process) listUpdate(msg tea.Msg) tea.Cmd {
 	}
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if key.Matches(msg, searchKey) && !p.list.SettingFilter() {
-			p.mode = modeInput
-			p.textInput.Reset()
-			p.textInput.Focus()
-			return nil
+		if !p.list.SettingFilter() {
+			switch {
+			case key.Matches(msg, newSearchKey):
+				p.mode = modeInput
+				p.textInput.Reset()
+				p.textInput.Focus()
+				return nil
+			case key.Matches(msg, searchKey):
+				p.mode = modeInput
+				q := p.currentItem().QueryString()
+				p.textInput.SetValue(q)
+				p.textInput.SetCursor(len(q))
+				p.textInput.Focus()
+				return nil
+			}
 		}
 		switch msg.String() {
 		case "enter":
 			if !p.list.SettingFilter() {
-				r, ok := p.list.SelectedItem().(Result)
-				if !ok {
-					return nil
-				}
-				p.startVim(r)
+				p.startVim(p.currentItem())
 				return nil
 			}
 		}
@@ -160,7 +178,7 @@ func (p *Process) View() string {
 	case modeList:
 		return p.list.View()
 	case modeInput:
-		return fmt.Sprintf("query:\n%s", p.textInput.View())
+		return fmt.Sprintf("query:\n\n%s", p.textInput.View())
 	}
 	return p.list.View()
 }
@@ -171,7 +189,7 @@ func (p *Process) search(query ...string) {
 		p.errCh <- err
 		return
 	}
-	res := make([]Result, 0)
+	res := make(Results, 0)
 	for _, s := range p.sources {
 		r, err := s.Search(p.ctx, q)
 		if err != nil {
@@ -180,8 +198,8 @@ func (p *Process) search(query ...string) {
 		}
 		res = append(res, r...)
 	}
-	p.current = res
-	p.list.SetItems(p.current.Items())
+	p.setTitle(fmt.Sprintf("Search results: %v", query))
+	p.list.SetItems(res.Items())
 }
 
 func (p *Process) Run(query ...string) error {
