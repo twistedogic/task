@@ -1,69 +1,133 @@
 package okr
 
 import (
-	"fmt"
-	"log"
+	"context"
+	"encoding/json"
+	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/twistedogic/task/pkg/fileutil"
-	"github.com/twistedogic/task/pkg/store/database"
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/twistedogic/store"
+	"github.com/twistedogic/store/bolt"
 )
 
 const dbName = "okr.db"
 
-func Setup(name string) (*Store, error) {
-	dir, err := fileutil.Home()
+var (
+	docStyle = lipgloss.NewStyle().Margin(1, 2)
+	addKey   = key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "add item"),
+	)
+	deleteKey = key.NewBinding(
+		key.WithKeys("d"),
+		key.WithHelp("d", "delete item"),
+	)
+	editKey = key.NewBinding(
+		key.WithKeys("e"),
+		key.WithHelp("edit", "edit item"),
+	)
+	additionKeys = func() []key.Binding {
+		return []key.Binding{
+			addKey,
+			deleteKey,
+			editKey,
+		}
+	}
+)
+
+type Process struct {
+	list  list.Model
+	input textinput.Model
+	store store.StoreWithContext
+}
+
+func New(ctx context.Context) (*Process, error) {
+	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	l.Title = "Objectives"
+	l.AdditionalShortHelpKeys = additionKeys
+	l.AdditionalFullHelpKeys = additionKeys
+	l.StatusMessageLifetime = 5 * time.Second
+	input := textinput.New()
+
+	dir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
 	}
 	path := filepath.Join(dir, ".task", dbName)
-	base := filepath.Dir(path)
-	if err := fileutil.CreateFolder(base, 0755); err != nil {
-		return nil, err
-	}
-	db, err := database.New(path)
+	s, err := bolt.New(path)
 	if err != nil {
 		return nil, err
 	}
-	return New(db)
+	p := &Process{
+		list:  l,
+		input: input,
+		store: store.NewStoreWithContext(ctx, s),
+	}
+	obj, err := p.list()
+	if err != nil {
+		return nil, err
+	}
+	l.SetItems([]list.Item(obj))
+	return p, nil
 }
 
-func List() {
-	store, err := Setup(dbName)
+func (p *Process) list() ([]*Objective, error) {
+	items, err := p.store.PrefixScan(nil)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	for _, o := range store.List() {
-		fmt.Println(o)
+	obj := make([]*Objective, len(items))
+	for i, o := range obj {
+		if err := json.Unmarshal(item[i].Data, &o); err != nil {
+			return nil, err
+		}
+		obj[i] = o
 	}
+	return obj, nil
 }
 
-func Add() {
-	db, err := Setup(dbName)
+func (p *Process) save(obj *Objective) error {
+	b, err := json.Marshal(obj)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	if err := db.Add(); err != nil {
-		log.Fatal(err)
-	}
+	i := store.NewStringKeyItem(obj.Name, b)
+	return p.store.Set(i)
 }
 
-func Edit() {
-	db, err := Setup(dbName)
-	if err != nil {
-		log.Fatal(err)
+func (p *Process) Init() tea.Cmd { return nil }
+
+func (p *Process) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c":
+			return p, tea.Quit
+		}
+	case tea.WindowSizeMsg:
+		h, v := docStyle.GetFrameSize()
+		p.list.SetSize(msg.Width-h, msg.Height-v)
 	}
-	if err := db.Edit(); err != nil {
-		log.Fatal(err)
+	var cmd tea.Cmd
+	switch p.mode {
+	case modeList:
+		cmd = p.listUpdate(msg)
+	case modeInput:
+		cmd = p.inputUpdate(msg)
 	}
+	return p, cmd
+}
+func (p *Process) View() string {
+	return p.list.View()
 }
 
-func Update() {
-	db, err := Setup(dbName)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := db.Update(); err != nil {
-		log.Fatal(err)
-	}
+func (p *Process) Run() error {
+	return tea.NewProgram(p).Start()
 }

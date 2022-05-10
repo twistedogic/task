@@ -4,8 +4,7 @@ import (
 	"sort"
 
 	"github.com/manifoldco/promptui"
-	obj "github.com/twistedogic/task/pkg/okr/objective"
-	"github.com/twistedogic/task/pkg/store"
+	"github.com/twistedogic/store"
 )
 
 type Store struct {
