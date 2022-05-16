@@ -39,14 +39,14 @@ var (
 
 type Process struct {
 	ctx       context.Context
-	sources   []Searcher
+	source    Source
 	mode      mode
 	list      list.Model
 	textInput textinput.Model
 	errCh     chan error
 }
 
-func New(ctx context.Context, srcs ...Searcher) *Process {
+func New(ctx context.Context, src Source) *Process {
 	resultList := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	resultList.Title = "Search results"
 	resultList.AdditionalShortHelpKeys = additionKeys
@@ -56,10 +56,10 @@ func New(ctx context.Context, srcs ...Searcher) *Process {
 	textInput.Placeholder = "r:github.com/prometheus f:ast.go Expr"
 	return &Process{
 		ctx:       ctx,
-		sources:   srcs,
+		source:    src,
 		textInput: textInput,
 		list:      resultList,
-		errCh:     make(chan error, len(srcs)),
+		errCh:     make(chan error, 1),
 	}
 }
 
@@ -75,10 +75,13 @@ func (p *Process) startVim(r Result) error {
 		p.mode = modeList
 		os.RemoveAll(dir)
 	}()
+	if err := p.source.Download(p.ctx, &r); err != nil {
+		return err
+	}
 	if err := ioutil.WriteFile(path, r.Content, 0644); err != nil {
 		return err
 	}
-	to := fmt.Sprintf("+%d", r.Matches[0].Line+1)
+	to := fmt.Sprintf("+%d", r.Matches[0].LineNumber+1)
 	cmd := exec.Command("vim", to, path)
 	cmd.Stdout, cmd.Stdin = os.Stdout, os.Stdin
 	return cmd.Run()
@@ -190,14 +193,12 @@ func (p *Process) search(query ...string) {
 		return
 	}
 	res := make(Results, 0)
-	for _, s := range p.sources {
-		r, err := s.Search(p.ctx, q)
-		if err != nil {
-			p.errCh <- err
-			continue
-		}
-		res = append(res, r...)
+	r, err := p.source.Search(p.ctx, q)
+	if err != nil {
+		p.errCh <- err
+		return
 	}
+	res = append(res, r...)
 	p.setTitle(fmt.Sprintf("Search results: %v", query))
 	p.list.SetItems(res.Items())
 }

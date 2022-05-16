@@ -12,18 +12,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/sync/errgroup"
-
 	"github.com/twistedogic/task/pkg/search"
 )
 
 const (
 	BASE_URL = "https://sourcegraph.com/search/stream"
+
+	source search.SourceKey = "sourcegraph"
 )
 
 type Match struct {
-	Number int     `json:"lineNumber"`
-	Offset [][]int `json:"offsetAndLengths"`
+	Line   string `json:"line"`
+	Number int    `json:"lineNumber"`
 }
 
 type Result struct {
@@ -36,15 +36,13 @@ type Result struct {
 func (r Result) toSearch() search.Result {
 	var matches []search.Match
 	for _, m := range r.Matches {
-		for _, o := range m.Offset {
-			matches = append(matches, search.Match{
-				Line:   m.Number,
-				Offset: o[0],
-				Length: o[1],
-			})
-		}
+		matches = append(matches, search.Match{
+			Line:       m.Line,
+			LineNumber: m.Number,
+		})
 	}
 	res := search.Result{
+		Source:  source,
 		Repo:    r.Repo,
 		Commit:  r.Commit,
 		File:    r.File,
@@ -108,7 +106,7 @@ func (c Client) getWithContext(ctx context.Context, u string) (io.ReadCloser, er
 	return res.Body, nil
 }
 
-func (c Client) fetchFile(ctx context.Context, r search.Result) ([]byte, error) {
+func (c Client) fetchFile(ctx context.Context, r *search.Result) ([]byte, error) {
 	if r.Link == "" {
 		return nil, nil
 	}
@@ -147,20 +145,6 @@ func (c Client) parseResults(ctx context.Context, r io.Reader) ([]search.Result,
 			}
 		}
 	}
-	g, gctx := errgroup.WithContext(ctx)
-	for i, r := range results {
-		i, r := i, r
-		g.Go(func() error {
-			b, err := c.fetchFile(gctx, r)
-			if err == nil {
-				results[i].Content = b
-			}
-			return err
-		})
-	}
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
 	return results, nil
 }
 
@@ -176,3 +160,16 @@ func (c Client) Search(ctx context.Context, q search.Query) ([]search.Result, er
 	defer res.Body.Close()
 	return c.parseResults(ctx, res.Body)
 }
+
+func (c Client) Download(ctx context.Context, r *search.Result) error {
+	if r.Content != nil {
+		return nil
+	}
+	b, err := c.fetchFile(ctx, r)
+	if err == nil {
+		r.Content = b
+	}
+	return err
+}
+
+func (c Client) IsSource(key search.SourceKey) bool { return key == source }

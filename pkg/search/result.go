@@ -8,19 +8,22 @@ import (
 )
 
 type Match struct {
-	Line, Offset, Length int
+	Line       string
+	LineNumber int
 }
 
 type Result struct {
+	Source                   SourceKey
 	Repo, File, Commit, Link string
 	Content                  []byte
 	Matches                  []Match
 }
 
 func (r Result) preview() string {
-	m := r.Matches[0]
-	lines := strings.Split(string(r.Content), "\n")
-	return strings.TrimSpace(lines[m.Line])
+	if len(r.Matches) == 0 {
+		return "no match"
+	}
+	return strings.TrimSpace(r.Matches[0].Line)
 }
 
 // implement list.Item
